@@ -1,26 +1,27 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.1'
+__version__ = '0.2'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
 import base64
 from _winreg import *
 import configparser
+from xml.sax.saxutils import escape
 
 class Migrate2WinSSHTerm(wx.Frame):
     def saveSessionData(self, node=None, name=None, username=None, privateKey=None, hostname=None, port=None):
-        Node(name,
+        Node(escape(name),
             parent=node,
             type="Connection",
-            username=username,
-            pubkey=privateKey,
-            hostname=hostname,
-            port=port
+            username=escape(username),
+            pubkey=escape(privateKey),
+            hostname=escape(hostname),
+            port=escape(port)
             )
 
     def writeNode(self, node=None, xml=None):
         if node.type == 'Container':
-            xml.write("<Node Name='%s' Type='Container' Expanded='True'>\n" % base64.b64decode(node.name))
+            xml.write("<Node Name='%s' Type='Container' Expanded='True'>\n" % escape(base64.b64decode(node.name)))
             for n in node.children:
                 self.writeNode(n, xml)
             xml.write('</Node>\n')
@@ -55,7 +56,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
             for n in self.root.children:
                 self.writeNode(n, xml)
             xml.write('</WinSSHTerm>')
-            #print "Created file '%s'" % conFile
+            print "Created file '%s'" % conFile
 
     def __init__(self):
         wx.Frame.__init__(self, None, wx.ID_ANY, "Migrate2WinSSHTerm", size=(280,200))
@@ -73,8 +74,8 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
 
     def button2Click(self,event):
         self.root = Node('root')
-        self.read_mobaxterm_ini()
-        self.create_xml()
+        if self.read_mobaxterm_ini():
+            self.create_xml()
 
     def read_mobaxterm_ini(self):
         style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
@@ -82,12 +83,12 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         if dialog.ShowModal() == wx.ID_OK:
             file = dialog.GetPath()
         else:
-            file = None
+            return False
         dialog.Destroy()
-        if file != None:
+        try:
             config = configparser.RawConfigParser()
             config.optionxform = str
-            config.read('MobaXterm.ini')
+            config.read(file)
             res = Resolver('name')
             for s in config.sections():
                 if s.startswith('Bookmarks'):
@@ -117,6 +118,9 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                         sessionData = val.encode('utf-8').split('%')
                         if sessionData[0] == '#109#0':
                             self.saveSessionData(tmp, key, sessionData[3], '', sessionData[1], sessionData[2])
+            return True
+        except Exception as e:
+            return False
 
     def read_putty_registry(self):
         aReg = ConnectRegistry(None, HKEY_CURRENT_USER)

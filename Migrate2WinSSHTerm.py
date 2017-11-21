@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.2'
+__version__ = '0.3'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -7,6 +7,7 @@ import base64
 from _winreg import *
 import configparser
 from xml.sax.saxutils import escape
+import xml.etree.ElementTree as ET
 
 class Migrate2WinSSHTerm(wx.Frame):
     def saveSessionData(self, node=None, name=None, username=None, privateKey=None, hostname=None, port=None):
@@ -65,6 +66,8 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         self.button1.Bind(wx.EVT_BUTTON, self.button1Click)
         self.button2 = wx.Button(panel, id=-1, label='MobaXterm', pos=(10, 10+25), size=(245, 25))
         self.button2.Bind(wx.EVT_BUTTON, self.button2Click)
+        self.button3 = wx.Button(panel, id=-1, label='SuperPuTTY', pos=(10, 10+2*25), size=(245, 25))
+        self.button3.Bind(wx.EVT_BUTTON, self.button3Click)
         self.root = None
 
     def button1Click(self,event):
@@ -77,6 +80,61 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         if self.read_mobaxterm_ini():
             self.create_xml()
 
+    def button3Click(self,event):
+        self.root = Node('root')
+        if self.read_superputty_xml():
+            self.create_xml()
+
+    def read_superputty_xml(self):
+        style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
+        dialog = wx.FileDialog(self, message='Open Sessions.XML', wildcard='(*.XML)|*.XML', style=style)
+        if dialog.ShowModal() == wx.ID_OK:
+            file = dialog.GetPath()
+        else:
+            return False
+        dialog.Destroy()
+        try:
+            tree = ET.parse(file)
+            for item in tree.iter():
+                if item.tag == "SessionData":
+                    sessionPath = item.attrib.get('SessionId')
+                    list = sessionPath.encode('utf-8').split('/')
+                    tmp = self.root
+                    res = Resolver('name')
+                    counter = 1
+                    for i in list:
+                        pathB64 = base64.b64encode(i)
+                        try:
+                            if res.get(tmp, pathB64):
+                                tmp = res.get(tmp, pathB64)
+                                if counter >= len(list):
+                                    print pathB64
+                                    self.saveSessionData(
+                                        node=tmp,
+                                        name=str(item.attrib.get('SessionName').encode('utf-8')),
+                                        username=str(item.attrib.get('Username').encode('utf-8')),
+                                        privateKey='',
+                                        hostname=str(item.attrib.get('Host').encode('utf-8')),
+                                        port=str(item.attrib.get('Port').encode('utf-8'))
+                                        )
+                                    print pathB64
+                        except ChildResolverError as e:
+                            if counter < len(list):
+                                tmp = Node(pathB64, parent=tmp, type="Container")
+                            if counter >= len(list):
+                                self.saveSessionData(
+                                    node=tmp,
+                                    name=str(item.attrib.get('SessionName').encode('utf-8')),
+                                    username=str(item.attrib.get('Username').encode('utf-8')),
+                                    privateKey='',
+                                    hostname=str(item.attrib.get('Host').encode('utf-8')),
+                                    port=str(item.attrib.get('Port').encode('utf-8'))
+                                    )
+                        counter = counter + 1
+            return True
+        except Exception as e:
+            return False
+            
     def read_mobaxterm_ini(self):
         style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
         dialog = wx.FileDialog(self, message='Open MobaXterm.ini', wildcard='(*.ini)|*.ini', style=style)

@@ -5,6 +5,7 @@ Following configuration sources are supported:
 * PuTTY
 * PuTTY Session Manager
 * MobaXterm
+* SuperPuTTY
 
 Usage:
 * Download the latest [release](https://github.com/P-St/Migrate2WinSSHTerm/releases)

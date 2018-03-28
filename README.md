@@ -6,6 +6,7 @@ Following configuration sources are supported:
 * PuTTY Session Manager
 * MobaXterm
 * SuperPuTTY
+* mRemoteNG
 
 Usage:
 * Download the latest [release](https://github.com/P-St/Migrate2WinSSHTerm/releases)

@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.3'
+__version__ = '0.4'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -68,6 +68,8 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         self.button2.Bind(wx.EVT_BUTTON, self.button2Click)
         self.button3 = wx.Button(panel, id=-1, label='SuperPuTTY', pos=(10, 10+2*25), size=(245, 25))
         self.button3.Bind(wx.EVT_BUTTON, self.button3Click)
+        self.button4 = wx.Button(panel, id=-1, label='mRemoteNG', pos=(10, 10+3*25), size=(245, 25))
+        self.button4.Bind(wx.EVT_BUTTON, self.button4Click)
         self.root = None
 
     def button1Click(self,event):
@@ -85,6 +87,46 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         if self.read_superputty_xml():
             self.create_xml()
 
+    def button4Click(self,event):
+        self.root = Node('root')
+        if self.read_mremoteng_xml():
+            self.create_xml()
+
+    def read_mremoteng_xml(self):
+        style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
+        dialog = wx.FileDialog(self, message='Open confCons.xml', wildcard='(*.XML)|*.XML', style=style)
+        if dialog.ShowModal() == wx.ID_OK:
+            file = dialog.GetPath()
+        else:
+            return False
+        dialog.Destroy()
+        try:
+            tree = ET.parse(file)
+            rt = tree.getroot()
+            for child in rt:
+                if child.tag == "Node":
+                    self.mremoteng_helper(child, self.root)
+            return True
+        except Exception as e:
+            return False
+            
+    def mremoteng_helper(self, node=None, parentNode=None):
+        if node.attrib.get('Type') == 'Connection':
+            if node.attrib.get('Protocol') == "SSH2":
+                self.saveSessionData(
+                    node=parentNode,
+                    name=str(node.attrib.get('Name').encode('utf-8')),
+                    username=str(node.attrib.get('Username').encode('utf-8')),
+                    privateKey='',
+                    hostname=str(node.attrib.get('Hostname').encode('utf-8')),
+                    port=str(node.attrib.get('Port').encode('utf-8'))
+                    )
+        elif node.attrib.get('Type') == 'Container':          
+            pathB64 = base64.b64encode(node.attrib.get('Name'))
+            tmp = Node(pathB64, parent=parentNode, type="Container")
+            for child in node:
+                self.mremoteng_helper(child, tmp)
+      
     def read_superputty_xml(self):
         style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
         dialog = wx.FileDialog(self, message='Open Sessions.XML', wildcard='(*.XML)|*.XML', style=style)

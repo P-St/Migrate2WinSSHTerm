@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.4'
+__version__ = '0.5'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -122,7 +122,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     port=str(node.attrib.get('Port').encode('utf-8'))
                     )
         elif node.attrib.get('Type') == 'Container':          
-            pathB64 = base64.b64encode(node.attrib.get('Name'))
+            pathB64 = base64.b64encode(node.attrib.get('Name').encode('utf-8'))
             tmp = Node(pathB64, parent=parentNode, type="Container")
             for child in node:
                 self.mremoteng_helper(child, tmp)

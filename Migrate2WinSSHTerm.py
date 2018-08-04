@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.5'
+__version__ = '0.6'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -70,6 +70,8 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         self.button3.Bind(wx.EVT_BUTTON, self.button3Click)
         self.button4 = wx.Button(panel, id=-1, label='mRemoteNG', pos=(10, 10+3*25), size=(245, 25))
         self.button4.Bind(wx.EVT_BUTTON, self.button4Click)
+        self.button5 = wx.Button(panel, id=-1, label='MTPuTTY', pos=(10, 10+4*25), size=(245, 25))
+        self.button5.Bind(wx.EVT_BUTTON, self.button5Click)
         self.root = None
 
     def button1Click(self,event):
@@ -91,7 +93,60 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         self.root = Node('root')
         if self.read_mremoteng_xml():
             self.create_xml()
+            
+    def button5Click(self,event):
+        self.root = Node('root')
+        if self.read_mtputty_xml():
+            self.create_xml()
 
+    def read_mtputty_xml(self):
+        style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
+        dialog = wx.FileDialog(self, message='Open exported MTPuTTY tree (.xml)', wildcard='(*.xml)|*.xml', style=style)
+        if dialog.ShowModal() == wx.ID_OK:
+            file = dialog.GetPath()
+        else:
+            return False
+        dialog.Destroy()
+        try:
+            tree = ET.parse(file)
+            rt = tree.getroot()
+            if rt.tag == "Servers":
+                for c1 in rt:
+                    if c1.tag == "Putty":
+                        for child in c1:
+                            if child.tag == "Node":                                 
+                                self.mtputty_helper(child, self.root)
+            return True
+        except Exception as e:
+            return False            
+
+    def mtputty_helper(self, node=None, parentNode=None):
+        if node.attrib.get('Type') == '1':           
+            for child in node:
+                if child.tag == "DisplayName":
+                    name=str(child.text.encode('utf-8'))
+                if child.tag == "UserName":
+                    username=str(child.text.encode('utf-8'))
+                if child.tag == "ServerName":
+                    hostname=str(child.text.encode('utf-8'))
+                if child.tag == "Port":
+                    port=str(child.text.encode('utf-8'))
+            self.saveSessionData(
+                    node=parentNode,
+                    name=name,
+                    username=username,
+                    privateKey='',
+                    hostname=hostname,
+                    port=port
+                    )    
+        elif node.attrib.get('Type') == '0':
+            for child in node:
+                if child.tag == "DisplayName":
+                    pathB64 = base64.b64encode(child.text.encode('utf-8'))
+                    tmp = Node(pathB64, parent=parentNode, type="Container")                    
+                else:
+                    self.mtputty_helper(child, tmp)
+            
     def read_mremoteng_xml(self):
         style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
         dialog = wx.FileDialog(self, message='Open confCons.xml', wildcard='(*.XML)|*.XML', style=style)

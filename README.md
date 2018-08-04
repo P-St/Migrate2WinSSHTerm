@@ -7,6 +7,7 @@ Following configuration sources are supported:
 * MobaXterm
 * SuperPuTTY
 * mRemoteNG
+* MTPuTTY
 
 Usage:
 * Download the latest [release](https://github.com/P-St/Migrate2WinSSHTerm/releases)

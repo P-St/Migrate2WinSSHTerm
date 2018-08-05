@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.6'
+__version__ = '0.7'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -116,6 +116,14 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                         for child in c1:
                             if child.tag == "Node":                                 
                                 self.mtputty_helper(child, self.root)
+            elif rt.tag == "MTPutty":
+                for c2 in rt:
+                    if c2.tag == "Servers":
+                        for cc2 in c2:
+                            if cc2.tag == "Putty":
+                                for child2 in cc2:
+                                    if child2.tag == "Node":
+                                        self.mtputty_helper(child2, self.root)
             return True
         except Exception as e:
             return False            
@@ -131,6 +139,8 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     hostname=str(child.text.encode('utf-8'))
                 if child.tag == "Port":
                     port=str(child.text.encode('utf-8'))
+                    if port == '0':
+                        port='22'
             self.saveSessionData(
                     node=parentNode,
                     name=name,

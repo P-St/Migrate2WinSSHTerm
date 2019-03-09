@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.7'
+__version__ = '0.8'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -126,21 +126,27 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                                         self.mtputty_helper(child2, self.root)
             return True
         except Exception as e:
+            wx.MessageBox(str(e), "Error")
             return False            
 
     def mtputty_helper(self, node=None, parentNode=None):
         if node.attrib.get('Type') == '1':           
+            name=""
+            username=""
+            hostname=""
+            port=""
             for child in node:
-                if child.tag == "DisplayName":
-                    name=str(child.text.encode('utf-8'))
-                if child.tag == "UserName":
-                    username=str(child.text.encode('utf-8'))
-                if child.tag == "ServerName":
-                    hostname=str(child.text.encode('utf-8'))
-                if child.tag == "Port":
-                    port=str(child.text.encode('utf-8'))
-                    if port == '0':
-                        port='22'
+                if not child.text is None:
+                    if child.tag == "DisplayName":
+                        name=str(child.text.encode('utf-8'))
+                    if child.tag == "UserName":
+                        username=str(child.text.encode('utf-8'))
+                    if child.tag == "ServerName":
+                        hostname=str(child.text.encode('utf-8'))
+                    if child.tag == "Port":
+                        port=str(child.text.encode('utf-8'))
+                        if port == '0':
+                            port='22'
             self.saveSessionData(
                     node=parentNode,
                     name=name,
@@ -173,6 +179,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     self.mremoteng_helper(child, self.root)
             return True
         except Exception as e:
+            wx.MessageBox(str(e), "Error")
             return False
             
     def mremoteng_helper(self, node=None, parentNode=None):
@@ -240,6 +247,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                         counter = counter + 1
             return True
         except Exception as e:
+            wx.MessageBox(str(e), "Error")
             return False
             
     def read_mobaxterm_ini(self):
@@ -285,6 +293,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                             self.saveSessionData(tmp, key, sessionData[3], '', sessionData[1], sessionData[2])
             return True
         except Exception as e:
+            wx.MessageBox(str(e), "Error")
             return False
 
     def read_putty_registry(self):

@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.8'
+__version__ = '0.9'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -72,6 +72,8 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         self.button4.Bind(wx.EVT_BUTTON, self.button4Click)
         self.button5 = wx.Button(panel, id=-1, label='MTPuTTY', pos=(10, 10+4*25), size=(245, 25))
         self.button5.Bind(wx.EVT_BUTTON, self.button5Click)
+        self.button6 = wx.Button(panel, id=-1, label='PuTTY Connection Manager', pos=(10, 10+5*25), size=(245, 25))
+        self.button6.Bind(wx.EVT_BUTTON, self.button6Click)
         self.root = None
 
     def button1Click(self,event):
@@ -99,6 +101,11 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         if self.read_mtputty_xml():
             self.create_xml()
 
+    def button6Click(self,event):
+        self.root = Node('root')
+        if self.read_puttycm_xml():
+            self.create_xml()
+            
     def read_mtputty_xml(self):
         style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
         dialog = wx.FileDialog(self, message='Open exported MTPuTTY tree (.xml)', wildcard='(*.xml)|*.xml', style=style)
@@ -198,6 +205,63 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
             tmp = Node(pathB64, parent=parentNode, type="Container")
             for child in node:
                 self.mremoteng_helper(child, tmp)
+
+    def read_puttycm_xml(self):
+        style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
+        dialog = wx.FileDialog(self, message='Open exported connections xml', wildcard='(*.XML)|*.XML', style=style)
+        if dialog.ShowModal() == wx.ID_OK:
+            file = dialog.GetPath()
+        else:
+            return False
+        dialog.Destroy()
+        try:
+            tree = ET.parse(file)
+            rt = tree.getroot()
+            if rt.tag == "configuration":
+                for c1 in rt:
+                    if c1.tag == "root":
+                        for child in c1:
+                            if child.tag == "container" or child.tag == "connection":
+                                self.puttycm_helper(child, self.root)
+            return True
+        except Exception as e:
+            wx.MessageBox(str(e), "Error")
+            return False
+            
+    def puttycm_helper(self, node=None, parentNode=None):
+        if node.tag == 'connection' and node.attrib.get('type') == 'PuTTY':
+            name=""
+            hostname=""
+            port=""
+            username=""
+            for child1 in node:
+                if child1.tag == 'connection_info':
+                    for child2 in child1:
+                        if not child2.text is None:
+                            if child2.tag == "name":
+                                name=str(child2.text.encode('utf-8'))
+                            if child2.tag == "host":
+                                hostname=str(child2.text.encode('utf-8'))
+                            if child2.tag == "port":
+                                port=str(child2.text.encode('utf-8'))
+                elif child1.tag == 'login':
+                    for child3 in child1:
+                        if not child3.text is None:
+                            if child3.tag == "login":
+                                username=str(child3.text.encode('utf-8'))
+            self.saveSessionData(
+                    node=parentNode,
+                    name=name,
+                    username=username,
+                    privateKey='',
+                    hostname=hostname,
+                    port=port
+                    )    
+        elif node.tag == 'container' and node.attrib.get('type') == 'folder':          
+            pathB64 = base64.b64encode(node.attrib.get('name').encode('utf-8'))
+            tmp = Node(pathB64, parent=parentNode, type="Container")
+            for child in node:
+                self.puttycm_helper(child, tmp)
       
     def read_superputty_xml(self):
         style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST

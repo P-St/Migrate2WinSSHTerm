@@ -8,6 +8,7 @@ Following configuration sources are supported:
 * SuperPuTTY
 * mRemoteNG
 * MTPuTTY
+* PuTTY Connection Manager
 
 Usage:
 * Download the latest [release](https://github.com/P-St/Migrate2WinSSHTerm/releases)

@@ -9,6 +9,7 @@ Following configuration sources are supported:
 * mRemoteNG
 * MTPuTTY
 * PuTTY Connection Manager
+* KiTTY
 
 Usage:
 * Download the latest [release](https://github.com/P-St/Migrate2WinSSHTerm/releases)

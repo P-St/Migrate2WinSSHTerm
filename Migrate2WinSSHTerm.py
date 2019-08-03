@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.9'
+__version__ = '0.10'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -8,6 +8,10 @@ from _winreg import *
 import configparser
 from xml.sax.saxutils import escape
 import xml.etree.ElementTree as ET
+import os
+import urllib
+import codecs
+import sys
 
 class Migrate2WinSSHTerm(wx.Frame):
     def saveSessionData(self, node=None, name=None, username=None, privateKey=None, hostname=None, port=None):
@@ -51,7 +55,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
     def create_xml(self):
         conFile = self.get_con_xml_path()
         if conFile != None:
-            xml = open(conFile, 'w')
+            xml = codecs.open(conFile, 'w', 'utf-8')
             xml.write("<?xml version='1.0' encoding='utf-8'?>\n")
             xml.write("<WinSSHTerm Version='1'>\n")
             for n in self.root.children:
@@ -60,7 +64,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
             print "Created file '%s'" % conFile
 
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "Migrate2WinSSHTerm", size=(280,200))
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Migrate2WinSSHTerm" + " " + __version__, size=(280,250), style=wx.DEFAULT_FRAME_STYLE & ~(wx.RESIZE_BORDER | wx.MAXIMIZE_BOX))
         panel = wx.Panel(self, -1)
         self.button1 = wx.Button(panel, id=-1, label='PuTTY / PuTTY Session Manager', pos=(10, 10), size=(245, 25))
         self.button1.Bind(wx.EVT_BUTTON, self.button1Click)
@@ -74,6 +78,10 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         self.button5.Bind(wx.EVT_BUTTON, self.button5Click)
         self.button6 = wx.Button(panel, id=-1, label='PuTTY Connection Manager', pos=(10, 10+5*25), size=(245, 25))
         self.button6.Bind(wx.EVT_BUTTON, self.button6Click)
+        self.button7 = wx.Button(panel, id=-1, label='KiTTY Classic', pos=(10, 10+6*25), size=(245, 25))
+        self.button7.Bind(wx.EVT_BUTTON, self.button7Click)
+        self.button8 = wx.Button(panel, id=-1, label='KiTTY Portable', pos=(10, 10+7*25), size=(245, 25))
+        self.button8.Bind(wx.EVT_BUTTON, self.button8Click)
         self.root = None
 
     def button1Click(self,event):
@@ -105,7 +113,17 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         self.root = Node('root')
         if self.read_puttycm_xml():
             self.create_xml()
+    
+    def button7Click(self,event):
+        self.root = Node('root')
+        self.read_kitty_registry()
+        self.create_xml()
             
+    def button8Click(self,event):
+        self.root = Node('root')
+        if self.read_kitty_filesystem():
+            self.create_xml()
+
     def read_mtputty_xml(self):
         style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
         dialog = wx.FileDialog(self, message='Open exported MTPuTTY tree (.xml)', wildcard='(*.xml)|*.xml', style=style)
@@ -407,7 +425,100 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
             except EnvironmentError as e:
                 break
 
+    def read_kitty_registry(self):
+        aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
+        aKey = OpenKey(aReg, r"Software\9bis.com\KiTTY\Sessions")
+        res = Resolver('name')
+        for i in range(0, QueryInfoKey(aKey)[0]):
+            try:
+                asubkey_name = EnumKey(aKey, i)
+                if str(asubkey_name) == 'WinSSHTerm':
+                    continue
+                asubkey = OpenKey(aKey, asubkey_name)
+                try:
+                    sessionPath = str(QueryValueEx(asubkey, "PsmPath")[0].encode('utf-8'))
+                except Exception as e:
+                    sessionPath = "Sessions"
+                    pass
+                list = sessionPath.split('\\')
+                tmp = self.root
+                counter = 1
+                for i in list:
+                    pathB64 = base64.b64encode(i)
+                    try:
+                        if res.get(tmp, pathB64):
+                            tmp = res.get(tmp, pathB64)
+                            if counter >= len(list):
+                                self.saveSessionData(
+                                    node=tmp,
+                                    name=str(asubkey_name),
+                                    username=str(QueryValueEx(asubkey, "UserName")[0]),
+                                    privateKey=str(QueryValueEx(asubkey, "PublicKeyFile")[0]),
+                                    hostname=str(QueryValueEx(asubkey, "HostName")[0]),
+                                    port=str(QueryValueEx(asubkey, "PortNumber")[0])
+                                    )
+                    except ChildResolverError as e:
+                        tmp = Node(pathB64, parent=tmp, type="Container")
+                        if counter >= len(list):
+                            self.saveSessionData(
+                                node=tmp,
+                                name=str(asubkey_name),
+                                username=str(QueryValueEx(asubkey, "UserName")[0]),
+                                privateKey=str(QueryValueEx(asubkey, "PublicKeyFile")[0]),
+                                hostname=str(QueryValueEx(asubkey, "HostName")[0]),
+                                port=str(QueryValueEx(asubkey, "PortNumber")[0])
+                                )
+                    counter = counter + 1
+            except EnvironmentError as e:
+                break
+
+    def read_kitty_filesystem(self):
+        style = wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST
+        dialog = wx.DirDialog(self, message='Choose KiTTY folder "Sessions"', style=style)
+        if dialog.ShowModal() == wx.ID_OK:
+            file = dialog.GetPath()
+        else:
+            return False
+        dialog.Destroy()
+        try:
+            self.kitty_filesystem_helper(file, self.root)
+            return True            
+        except Exception as e:
+            wx.MessageBox(str(e), "Error")
+            return False
+
+    def kitty_filesystem_helper(self, node=None, parentNode=None):
+        list = os.listdir(node)
+        for item in list:
+            if os.path.isfile(node + "\\" + item):
+                hostname=""
+                port=""
+                username=""
+                with open(node + "\\" + item, 'r') as f:
+                    lines = f.readlines()
+                for line in lines:
+                    if line.startswith('HostName\\'):
+                        hostname = str(line.strip().split('\\')[1])
+                    if line.startswith('PortNumber\\'):
+                        port = str(line.strip().split('\\')[1])
+                    if line.startswith('UserName\\'):
+                        username = str(line.strip().split('\\')[1])
+                self.saveSessionData(
+                    node=parentNode,
+                    name=str(urllib.unquote(item.decode('utf-8'))),
+                    username=username.encode('utf-8'),
+                    privateKey='',
+                    hostname=hostname.encode('utf-8'),
+                    port=port.encode('utf-8')                   
+                    )
+            elif os.path.isdir(node + "\\" + item):          
+                pathB64 = base64.b64encode(str(item))
+                tmp = Node(pathB64, parent=parentNode, type="Container")
+                self.kitty_filesystem_helper(node + "\\" + item , tmp)
+                    
 if __name__ == "__main__":
+    reload(sys)
+    sys.setdefaultencoding("ISO-8859-1")
     app = wx.App(False)
     frame = Migrate2WinSSHTerm()
     frame.Show()

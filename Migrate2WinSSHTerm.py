@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.10'
+__version__ = '0.11'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -12,6 +12,7 @@ import os
 import urllib
 import codecs
 import sys
+import StringIO
 
 class Migrate2WinSSHTerm(wx.Frame):
     def saveSessionData(self, node=None, name=None, username=None, privateKey=None, hostname=None, port=None):
@@ -64,7 +65,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
             print "Created file '%s'" % conFile
 
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "Migrate2WinSSHTerm" + " " + __version__, size=(280,250), style=wx.DEFAULT_FRAME_STYLE & ~(wx.RESIZE_BORDER | wx.MAXIMIZE_BOX))
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Migrate2WinSSHTerm" + " " + __version__, size=(280,275), style=wx.DEFAULT_FRAME_STYLE & ~(wx.RESIZE_BORDER | wx.MAXIMIZE_BOX))
         panel = wx.Panel(self, -1)
         self.button1 = wx.Button(panel, id=-1, label='PuTTY / PuTTY Session Manager', pos=(10, 10), size=(245, 25))
         self.button1.Bind(wx.EVT_BUTTON, self.button1Click)
@@ -82,6 +83,8 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         self.button7.Bind(wx.EVT_BUTTON, self.button7Click)
         self.button8 = wx.Button(panel, id=-1, label='KiTTY Portable', pos=(10, 10+7*25), size=(245, 25))
         self.button8.Bind(wx.EVT_BUTTON, self.button8Click)
+        self.button9 = wx.Button(panel, id=-1, label='Xshell', pos=(10, 10+8*25), size=(245, 25))
+        self.button9.Bind(wx.EVT_BUTTON, self.button9Click)
         self.root = None
 
     def button1Click(self,event):
@@ -122,6 +125,11 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
     def button8Click(self,event):
         self.root = Node('root')
         if self.read_kitty_filesystem():
+            self.create_xml()
+
+    def button9Click(self,event):
+        self.root = Node('root')
+        if self.read_xshell_filesystem():
             self.create_xml()
 
     def read_mtputty_xml(self):
@@ -377,7 +385,63 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         except Exception as e:
             wx.MessageBox(str(e), "Error")
             return False
+            
+    def read_xshell_filesystem(self):
+        style = wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST
+        dialog = wx.DirDialog(self, message='Choose Xshell folder "Sessions"', style=style)
+        if dialog.ShowModal() == wx.ID_OK:
+            file = dialog.GetPath()
+        else:
+            return False
+        dialog.Destroy()
+        try:
+            self.xshell_filesystem_helper(file, self.root)
+            return True            
+        except Exception as e:
+            wx.MessageBox(str(e), "Error")
+            return False
 
+    def xshell_filesystem_helper(self, node=None, parentNode=None):
+        list = os.listdir(node)
+        for item in list:
+            filename =  node + "\\" + item 
+            if os.path.isfile(filename):
+                if not filename.endswith(".xsh"):
+                    continue
+                hostname=""
+                port=""
+                username=""
+                data=""
+                with open(filename, 'r') as f:
+                    data = f.read()
+                buf = StringIO.StringIO(data.decode('utf16'))
+                config = configparser.RawConfigParser()
+                config.optionxform = str
+                config.readfp(buf)
+                for s in config.sections():
+                    if s == 'CONNECTION':
+                        for (key,val) in config.items(s):
+                            if key == "Port":
+                                port=str(val)
+                            if key == "Host":
+                                hostname=str(val)
+                    if s == 'CONNECTION:AUTHENTICATION':
+                        for (key,val) in config.items(s):
+                            if key == "UserName":
+                                username=str(val)
+                self.saveSessionData(
+                    node=parentNode,
+                    name=str(os.path.splitext(item)[0]),
+                    username=username.encode('utf-8'),
+                    privateKey='',
+                    hostname=hostname.encode('utf-8'),
+                    port=port.encode('utf-8')                   
+                    )
+            elif os.path.isdir(node + "\\" + item):          
+                pathB64 = base64.b64encode(str(item))
+                tmp = Node(pathB64, parent=parentNode, type="Container")
+                self.xshell_filesystem_helper(node + "\\" + item , tmp)
+            
     def read_putty_registry(self):
         aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
         aKey = OpenKey(aReg, r"Software\SimonTatham\PuTTY\Sessions")

@@ -10,6 +10,7 @@ Following configuration sources are supported:
 * MTPuTTY
 * PuTTY Connection Manager
 * KiTTY
+* Xshell
 
 Usage:
 * Download the latest [release](https://github.com/P-St/Migrate2WinSSHTerm/releases)

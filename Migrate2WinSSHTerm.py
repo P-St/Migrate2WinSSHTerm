@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.11'
+__version__ = '0.12'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -171,13 +171,13 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
             for child in node:
                 if not child.text is None:
                     if child.tag == "DisplayName":
-                        name=str(child.text.encode('utf-8'))
+                        name=str(child.text.encode('utf-8', 'ignore'))
                     if child.tag == "UserName":
-                        username=str(child.text.encode('utf-8'))
+                        username=str(child.text.encode('utf-8', 'ignore'))
                     if child.tag == "ServerName":
-                        hostname=str(child.text.encode('utf-8'))
+                        hostname=str(child.text.encode('utf-8', 'ignore'))
                     if child.tag == "Port":
-                        port=str(child.text.encode('utf-8'))
+                        port=str(child.text.encode('utf-8', 'ignore'))
                         if port == '0':
                             port='22'
             self.saveSessionData(
@@ -191,7 +191,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         elif node.attrib.get('Type') == '0':
             for child in node:
                 if child.tag == "DisplayName":
-                    pathB64 = base64.b64encode(child.text.encode('utf-8'))
+                    pathB64 = base64.b64encode(child.text.encode('utf-8', 'ignore'))
                     tmp = Node(pathB64, parent=parentNode, type="Container")                    
                 else:
                     self.mtputty_helper(child, tmp)
@@ -220,14 +220,14 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
             if node.attrib.get('Protocol') == "SSH2":
                 self.saveSessionData(
                     node=parentNode,
-                    name=str(node.attrib.get('Name').encode('utf-8')),
-                    username=str(node.attrib.get('Username').encode('utf-8')),
+                    name=str(node.attrib.get('Name').encode('utf-8', 'ignore')),
+                    username=str(node.attrib.get('Username').encode('utf-8', 'ignore')),
                     privateKey='',
-                    hostname=str(node.attrib.get('Hostname').encode('utf-8')),
-                    port=str(node.attrib.get('Port').encode('utf-8'))
+                    hostname=str(node.attrib.get('Hostname').encode('utf-8', 'ignore')),
+                    port=str(node.attrib.get('Port').encode('utf-8', 'ignore'))
                     )
         elif node.attrib.get('Type') == 'Container':          
-            pathB64 = base64.b64encode(node.attrib.get('Name').encode('utf-8'))
+            pathB64 = base64.b64encode(node.attrib.get('Name').encode('utf-8', 'ignore'))
             tmp = Node(pathB64, parent=parentNode, type="Container")
             for child in node:
                 self.mremoteng_helper(child, tmp)
@@ -265,16 +265,16 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     for child2 in child1:
                         if not child2.text is None:
                             if child2.tag == "name":
-                                name=str(child2.text.encode('utf-8'))
+                                name=str(child2.text.encode('utf-8', 'ignore'))
                             if child2.tag == "host":
-                                hostname=str(child2.text.encode('utf-8'))
+                                hostname=str(child2.text.encode('utf-8', 'ignore'))
                             if child2.tag == "port":
-                                port=str(child2.text.encode('utf-8'))
+                                port=str(child2.text.encode('utf-8', 'ignore'))
                 elif child1.tag == 'login':
                     for child3 in child1:
                         if not child3.text is None:
                             if child3.tag == "login":
-                                username=str(child3.text.encode('utf-8'))
+                                username=str(child3.text.encode('utf-8', 'ignore'))
             self.saveSessionData(
                     node=parentNode,
                     name=name,
@@ -284,7 +284,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     port=port
                     )    
         elif node.tag == 'container' and node.attrib.get('type') == 'folder':          
-            pathB64 = base64.b64encode(node.attrib.get('name').encode('utf-8'))
+            pathB64 = base64.b64encode(node.attrib.get('name').encode('utf-8', 'ignore'))
             tmp = Node(pathB64, parent=parentNode, type="Container")
             for child in node:
                 self.puttycm_helper(child, tmp)
@@ -302,7 +302,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
             for item in tree.iter():
                 if item.tag == "SessionData":
                     sessionPath = item.attrib.get('SessionId')
-                    list = sessionPath.encode('utf-8').split('/')
+                    list = sessionPath.encode('utf-8', 'ignore').split('/')
                     tmp = self.root
                     res = Resolver('name')
                     counter = 1
@@ -315,11 +315,11 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                                     print pathB64
                                     self.saveSessionData(
                                         node=tmp,
-                                        name=str(item.attrib.get('SessionName').encode('utf-8')),
-                                        username=str(item.attrib.get('Username').encode('utf-8')),
+                                        name=str(item.attrib.get('SessionName').encode('utf-8', 'ignore')),
+                                        username=str(item.attrib.get('Username').encode('utf-8', 'ignore')),
                                         privateKey='',
-                                        hostname=str(item.attrib.get('Host').encode('utf-8')),
-                                        port=str(item.attrib.get('Port').encode('utf-8'))
+                                        hostname=str(item.attrib.get('Host').encode('utf-8', 'ignore')),
+                                        port=str(item.attrib.get('Port').encode('utf-8', 'ignore'))
                                         )
                                     print pathB64
                         except ChildResolverError as e:
@@ -328,11 +328,11 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                             if counter >= len(list):
                                 self.saveSessionData(
                                     node=tmp,
-                                    name=str(item.attrib.get('SessionName').encode('utf-8')),
-                                    username=str(item.attrib.get('Username').encode('utf-8')),
+                                    name=str(item.attrib.get('SessionName').encode('utf-8', 'ignore')),
+                                    username=str(item.attrib.get('Username').encode('utf-8', 'ignore')),
                                     privateKey='',
-                                    hostname=str(item.attrib.get('Host').encode('utf-8')),
-                                    port=str(item.attrib.get('Port').encode('utf-8'))
+                                    hostname=str(item.attrib.get('Host').encode('utf-8', 'ignore')),
+                                    port=str(item.attrib.get('Port').encode('utf-8', 'ignore'))
                                     )
                         counter = counter + 1
             return True
@@ -363,7 +363,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                             continue
                         if key == 'SubRep' and val:
                             sessionPath = config[s]['SubRep']
-                            list = sessionPath.encode('utf-8').split('\\')
+                            list = sessionPath.encode('utf-8', 'ignore').split('\\')
                             counter = 1
                             for i in list:
                                 pathB64 = base64.b64encode(i)
@@ -378,7 +378,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     for (key,val) in config.items(s):
                         if key == 'ImgNum' or key == 'SubRep':
                             continue
-                        sessionData = val.encode('utf-8').split('%')
+                        sessionData = val.encode('utf-8', 'ignore').split('%')
                         if sessionData[0] == '#109#0':
                             self.saveSessionData(tmp, key, sessionData[3], '', sessionData[1], sessionData[2])
             return True
@@ -414,7 +414,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                 data=""
                 with open(filename, 'r') as f:
                     data = f.read()
-                buf = StringIO.StringIO(data.decode('utf16'))
+                buf = StringIO.StringIO(data.decode('utf16', 'ignore'))
                 config = configparser.RawConfigParser()
                 config.optionxform = str
                 config.readfp(buf)
@@ -432,10 +432,10 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                 self.saveSessionData(
                     node=parentNode,
                     name=str(os.path.splitext(item)[0]),
-                    username=username.encode('utf-8'),
+                    username=username.encode('utf-8', 'ignore'),
                     privateKey='',
-                    hostname=hostname.encode('utf-8'),
-                    port=port.encode('utf-8')                   
+                    hostname=hostname.encode('utf-8', 'ignore'),
+                    port=port.encode('utf-8', 'ignore')                   
                     )
             elif os.path.isdir(node + "\\" + item):          
                 pathB64 = base64.b64encode(str(item))
@@ -453,7 +453,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     continue
                 asubkey = OpenKey(aKey, asubkey_name)
                 try:
-                    sessionPath = str(QueryValueEx(asubkey, "PsmPath")[0].encode('utf-8'))
+                    sessionPath = str(QueryValueEx(asubkey, "PsmPath")[0].encode('utf-8', 'ignore'))
                 except Exception as e:
                     sessionPath = "Sessions"
                     pass
@@ -500,7 +500,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     continue
                 asubkey = OpenKey(aKey, asubkey_name)
                 try:
-                    sessionPath = str(QueryValueEx(asubkey, "PsmPath")[0].encode('utf-8'))
+                    sessionPath = str(QueryValueEx(asubkey, "PsmPath")[0].encode('utf-8', 'ignore'))
                 except Exception as e:
                     sessionPath = "Sessions"
                     pass
@@ -569,11 +569,11 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                         username = str(line.strip().split('\\')[1])
                 self.saveSessionData(
                     node=parentNode,
-                    name=str(urllib.unquote(item.decode('utf-8'))),
-                    username=username.encode('utf-8'),
+                    name=str(urllib.unquote(item.decode('utf-8', 'ignore'))),
+                    username=username.encode('utf-8', 'ignore'),
                     privateKey='',
-                    hostname=hostname.encode('utf-8'),
-                    port=port.encode('utf-8')                   
+                    hostname=hostname.encode('utf-8', 'ignore'),
+                    port=port.encode('utf-8', 'ignore')                   
                     )
             elif os.path.isdir(node + "\\" + item):          
                 pathB64 = base64.b64encode(str(item))

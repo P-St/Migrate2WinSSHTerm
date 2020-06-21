@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.12'
+__version__ = '0.13'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -412,9 +412,9 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                 port=""
                 username=""
                 data=""
-                with open(filename, 'r') as f:
+                with codecs.open(filename, 'r', 'utf-16') as f:
                     data = f.read()
-                buf = StringIO.StringIO(data.decode('utf16', 'ignore'))
+                buf = StringIO.StringIO(data)
                 config = configparser.RawConfigParser()
                 config.optionxform = str
                 config.readfp(buf)
@@ -583,6 +583,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
 if __name__ == "__main__":
     reload(sys)
     sys.setdefaultencoding("ISO-8859-1")
+    codecs.register_error("strict", codecs.ignore_errors)
     app = wx.App(False)
     frame = Migrate2WinSSHTerm()
     frame.Show()

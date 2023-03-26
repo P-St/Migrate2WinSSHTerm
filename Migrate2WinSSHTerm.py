@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.14'
+__version__ = '0.15'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -191,7 +191,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         elif node.attrib.get('Type') == '0':
             for child in node:
                 if child.tag == "DisplayName":
-                    pathB64 = base64.b64encode(child.text)
+                    pathB64 = base64.b64encode(child.text.encode())
                     tmp = Node(pathB64, parent=parentNode, type="Container")                    
                 else:
                     self.mtputty_helper(child, tmp)
@@ -227,7 +227,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     port=str(node.attrib.get('Port'))
                     )
         elif node.attrib.get('Type') == 'Container':          
-            pathB64 = base64.b64encode(node.attrib.get('Name'))
+            pathB64 = base64.b64encode(node.attrib.get('Name').encode())
             tmp = Node(pathB64, parent=parentNode, type="Container")
             for child in node:
                 self.mremoteng_helper(child, tmp)
@@ -284,7 +284,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     port=port
                     )    
         elif node.tag == 'container' and node.attrib.get('type') == 'folder':          
-            pathB64 = base64.b64encode(node.attrib.get('name'))
+            pathB64 = base64.b64encode(node.attrib.get('name').encode())
             tmp = Node(pathB64, parent=parentNode, type="Container")
             for child in node:
                 self.puttycm_helper(child, tmp)
@@ -312,7 +312,6 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                             if res.get(tmp, pathB64.decode()):
                                 tmp = res.get(tmp, pathB64.decode())
                                 if counter >= len(list):
-                                    print(pathB64)
                                     self.saveSessionData(
                                         node=tmp,
                                         name=str(item.attrib.get('SessionName')),
@@ -321,7 +320,6 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                                         hostname=str(item.attrib.get('Host')),
                                         port=str(item.attrib.get('Port'))
                                         )
-                                    print(pathB64)
                         except ChildResolverError as e:
                             if counter < len(list):
                                 tmp = Node(pathB64, parent=tmp, type="Container")
@@ -378,8 +376,11 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     for (key,val) in config.items(s):
                         if key == 'ImgNum' or key == 'SubRep':
                             continue
-                        sessionData = val.split('%')
-                        self.saveSessionData(tmp, key, sessionData[3], sessionData[14], sessionData[1], sessionData[2])
+                        try:
+                            sessionData = val.split('%')
+                            self.saveSessionData(tmp, key, sessionData[3], sessionData[14], sessionData[1], sessionData[2])       
+                        except Exception as e:
+                            continue            
             return True
         except Exception as e:
             wx.MessageBox(str(e), "Error")
@@ -437,7 +438,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     port=port                   
                     )
             elif os.path.isdir(node + "\\" + item):          
-                pathB64 = base64.b64encode(str(item))
+                pathB64 = base64.b64encode(str(item).encode())
                 tmp = Node(pathB64, parent=parentNode, type="Container")
                 self.xshell_filesystem_helper(node + "\\" + item , tmp)
             
@@ -577,7 +578,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     port=port                   
                     )
             elif os.path.isdir(node + "\\" + item):          
-                pathB64 = base64.b64encode(str(item))
+                pathB64 = base64.b64encode(str(item).encode())
                 tmp = Node(pathB64, parent=parentNode, type="Container")
                 self.kitty_filesystem_helper(node + "\\" + item , tmp)
                     

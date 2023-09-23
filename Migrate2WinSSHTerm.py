@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.15'
+__version__ = '0.16'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -65,7 +65,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
             print("Created file '%s'" % conFile)
 
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "Migrate2WinSSHTerm" + " " + __version__, size=(280,275), style=wx.DEFAULT_FRAME_STYLE & ~(wx.RESIZE_BORDER | wx.MAXIMIZE_BOX))
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Migrate2WinSSHTerm" + " " + __version__, size=(280,300), style=wx.DEFAULT_FRAME_STYLE & ~(wx.RESIZE_BORDER | wx.MAXIMIZE_BOX))
         panel = wx.Panel(self, -1)
         self.button1 = wx.Button(panel, id=-1, label='PuTTY / PuTTY Session Manager', pos=(10, 10), size=(245, 25))
         self.button1.Bind(wx.EVT_BUTTON, self.button1Click)
@@ -85,6 +85,8 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
         self.button8.Bind(wx.EVT_BUTTON, self.button8Click)
         self.button9 = wx.Button(panel, id=-1, label='Xshell', pos=(10, 10+8*25), size=(245, 25))
         self.button9.Bind(wx.EVT_BUTTON, self.button9Click)
+        self.button10 = wx.Button(panel, id=-1, label='SecureCRT', pos=(10, 10+9*25), size=(245, 25))
+        self.button10.Bind(wx.EVT_BUTTON, self.button10Click)
         self.root = None
 
     def button1Click(self,event):
@@ -130,6 +132,11 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
     def button9Click(self,event):
         self.root = Node('root')
         if self.read_xshell_filesystem():
+            self.create_xml()
+    
+    def button10Click(self,event):
+        self.root = Node('root')
+        if self.read_securecrt_xml():
             self.create_xml()
 
     def read_mtputty_xml(self):
@@ -195,7 +202,62 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                     tmp = Node(pathB64, parent=parentNode, type="Container")                    
                 else:
                     self.mtputty_helper(child, tmp)
+
+    def read_securecrt_xml(self):
+        style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
+        dialog = wx.FileDialog(self, message='Open exported XML (Tools->Export Settings)', wildcard='(*.XML)|*.XML', style=style)
+        if dialog.ShowModal() == wx.ID_OK:
+            file = dialog.GetPath()
+        else:
+            return False
+        dialog.Destroy()
+        try:
+            tree = ET.parse(file)
+            rt = tree.getroot()
+            for child in rt:
+                if child.tag == "key" and child.attrib.get('name') == 'Sessions':
+                    for session_child in child:
+                        self.securecrt_helper(session_child, self.root)
+            return True
+        except Exception as e:
+            wx.MessageBox(str(e), "Error")
+            return False
             
+    def securecrt_helper(self, node=None, parentNode=None):
+        name=""
+        username=""
+        hostname=""
+        port=""
+        isContainer=True
+        for child in node:
+            if child.tag == "dword" or child.tag == "string":
+                isContainer=False
+                break              
+        if isContainer:
+            pathB64 = base64.b64encode(node.attrib.get('name').encode())
+            tmp = Node(pathB64, parent=parentNode, type="Container")
+            for child in node:
+                self.securecrt_helper(child, tmp)
+        else:
+            for child in node:
+                name=str(node.attrib.get('name'))
+                if child.tag == "string" and child.attrib.get('name') == 'Hostname':
+                    hostname=str(child.text)
+                if child.tag == "string" and child.attrib.get('name') == 'Username':
+                    username=str(child.text)
+                if child.tag == "dword" and child.attrib.get('name') == '[SSH2] Port':
+                    port=str(child.text)
+                    if port == '0':
+                        port='22'
+            self.saveSessionData(
+                node=parentNode,
+                name=name,
+                username=username,
+                privateKey='',
+                hostname=hostname,
+                port=port
+                )       
+          
     def read_mremoteng_xml(self):
         style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
         dialog = wx.FileDialog(self, message='Open confCons.xml', wildcard='(*.XML)|*.XML', style=style)

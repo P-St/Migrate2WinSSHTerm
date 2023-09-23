@@ -11,6 +11,7 @@ Following configuration sources are supported:
 * PuTTY Connection Manager
 * KiTTY
 * Xshell
+* SecureCRT
 
 Usage:
 * Download the latest [release](https://github.com/P-St/Migrate2WinSSHTerm/releases)

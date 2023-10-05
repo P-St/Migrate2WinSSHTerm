@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.16'
+__version__ = '0.17'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -450,7 +450,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
             
     def read_xshell_filesystem(self):
         style = wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST
-        dialog = wx.DirDialog(self, message='Choose Xshell folder "Sessions"', style=style)
+        dialog = wx.DirDialog(self, message='Choose Xshell folder "Sessions" (should be inside your "My documents" folder)', style=style)
         if dialog.ShowModal() == wx.ID_OK:
             file = dialog.GetPath()
         else:
@@ -476,7 +476,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                 data=""
                 with codecs.open(filename, 'r', 'utf-16') as f:
                     data = f.read()
-                buf = StringIO.StringIO(data)
+                buf = StringIO(data)
                 config = configparser.RawConfigParser()
                 config.optionxform = str
                 config.readfp(buf)

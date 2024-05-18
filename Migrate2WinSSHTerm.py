@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.17'
+__version__ = '0.18'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -9,7 +9,7 @@ import configparser
 from xml.sax.saxutils import escape
 import xml.etree.ElementTree as ET
 import os
-import urllib
+from urllib.parse import unquote
 import codecs
 import sys
 from io import StringIO
@@ -633,7 +633,7 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
                         username = str(line.strip().split('\\')[1])
                 self.saveSessionData(
                     node=parentNode,
-                    name=str(urllib.unquote(item)),
+                    name=str(unquote(item)),
                     username=username,
                     privateKey='',
                     hostname=hostname,

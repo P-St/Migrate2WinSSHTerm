@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.18'
+__version__ = '0.19'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -15,15 +15,36 @@ import sys
 from io import StringIO
 
 class Migrate2WinSSHTerm(wx.Frame):
-    def saveSessionData(self, node=None, name=None, username=None, privateKey=None, hostname=None, port=None):
-        Node(escape(name),
-            parent=node,
-            type="Connection",
-            username=escape(username),
-            pubkey=escape(privateKey),
-            hostname=escape(hostname),
-            port=escape(port)
-            )
+    def saveSessionData(self,
+        node=None,
+        name=None,
+        username=None,
+        privateKey=None,
+        hostname=None,
+        port=None,
+        certificate=None,
+        proxyType=None,
+        proxyHost=None,
+        proxyPort=None,
+        proxyUsername=None,
+        proxyTelnetCommand=None      
+    ):
+        Node(
+        escape(name) if name is not None else None,
+        parent=node,
+        type="Connection",
+        username=escape(username) if username is not None else '',
+        pubkey=escape(privateKey) if privateKey is not None else '',
+        hostname=escape(hostname) if hostname is not None else '',
+        port=escape(port) if port is not None else '',
+        certificate=escape(certificate) if certificate is not None else '',
+        proxy="enabled" if proxyType is not None else "disabled",
+        proxyType=escape(proxyType) if proxyType is not None else '',
+        proxyHost=escape(proxyHost) if proxyHost is not None else '',
+        proxyPort=escape(proxyPort) if proxyPort is not None else '',
+        proxyUsername=escape(proxyUsername) if proxyUsername is not None else '',
+        proxyTelnetCommand=escape(proxyTelnetCommand) if proxyTelnetCommand is not None else ''
+        )
 
     def writeNode(self, node=None, xml=None):
         if node.type == 'Container':
@@ -40,7 +61,14 @@ Username='%s' \
 Password='' \
 PrivateKey='%s' \
 Hostname='%s' \
-Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.port)
+Port='%s' \
+Certificate='%s' \
+pSshProxy='%s' \
+pType='%s' \
+pHost='%s' \
+pPort='%s' \
+pUser='%s' \
+pTelnetCmd='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.port, node.certificate, node.proxy, node.proxyType, node.proxyHost, node.proxyPort, node.proxyUsername, node.proxyTelnetCommand)
             xml.write(node_data)
 
     def get_con_xml_path(self):
@@ -507,50 +535,40 @@ Port='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.
     def read_putty_registry(self):
         aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
         aKey = OpenKey(aReg, r"Software\SimonTatham\PuTTY\Sessions")
-        res = Resolver('name')
+        pathB64 = base64.b64encode("Sessions".encode())
+        sessions_container = Node(pathB64, parent=self.root, type="Container")      
         for i in range(0, QueryInfoKey(aKey)[0]):
             try:
                 asubkey_name = EnumKey(aKey, i)
-                if str(asubkey_name) == 'WinSSHTerm':
-                    continue
-                if str(asubkey_name) == 'WinSSHTerm_ScriptRunner':
+                if str(asubkey_name) == 'WinSSHTerm' or str(asubkey_name) == 'WinSSHTerm_ScriptRunner':
                     continue
                 asubkey = OpenKey(aKey, asubkey_name)
-                try:
-                    sessionPath = str(QueryValueEx(asubkey, "PsmPath")[0])
-                except Exception as e:
-                    sessionPath = "Sessions"
-                    pass
-                list = sessionPath.split('\\')
-                tmp = self.root
-                counter = 1
-                for i in list:
-                    pathB64 = base64.b64encode(i.encode())
-                    try:
-                        if res.get(tmp, pathB64.decode()):
-                            tmp = res.get(tmp, pathB64.decode())
-                            if counter >= len(list):
-                                self.saveSessionData(
-                                    node=tmp,
-                                    name=str(asubkey_name),
-                                    username=str(QueryValueEx(asubkey, "UserName")[0]),
-                                    privateKey=str(QueryValueEx(asubkey, "PublicKeyFile")[0]),
-                                    hostname=str(QueryValueEx(asubkey, "HostName")[0]),
-                                    port=str(QueryValueEx(asubkey, "PortNumber")[0])
-                                    )
-                    except ChildResolverError as e:
-                        tmp = Node(pathB64, parent=tmp, type="Container")
-                        if counter >= len(list):
-                            self.saveSessionData(
-                                node=tmp,
-                                name=str(asubkey_name),
+                lclProxyMethod=str(QueryValueEx(asubkey, "ProxyMethod")[0])
+                if lclProxyMethod == "1":
+                    tmpProxyType = 'SOCKS4'
+                elif lclProxyMethod == "2":
+                    tmpProxyType = 'SOCKS5'
+                elif lclProxyMethod == "3":
+                    tmpProxyType = 'HTTP'
+                elif lclProxyMethod == "5":
+                    tmpProxyType = 'Local'
+                else:
+                    tmpProxyType=None
+                self.saveSessionData(
+                    node=sessions_container,
+                    name=str(asubkey_name),
                                 username=str(QueryValueEx(asubkey, "UserName")[0]),
                                 privateKey=str(QueryValueEx(asubkey, "PublicKeyFile")[0]),
                                 hostname=str(QueryValueEx(asubkey, "HostName")[0]),
-                                port=str(QueryValueEx(asubkey, "PortNumber")[0])
-                                )
-                    counter = counter + 1
-            except EnvironmentError as e:
+                                port=str(QueryValueEx(asubkey, "PortNumber")[0]),
+                                certificate=str(QueryValueEx(asubkey, "DetachedCertificate")[0]),
+                                proxyType=tmpProxyType,
+                                proxyHost=str(QueryValueEx(asubkey, "ProxyHost")[0]),
+                                proxyPort=str(QueryValueEx(asubkey, "ProxyPort")[0]),
+                                proxyUsername=str(QueryValueEx(asubkey, "ProxyUsername")[0]),
+                                proxyTelnetCommand=str(QueryValueEx(asubkey, "ProxyTelnetCommand")[0])
+                )
+            except EnvironmentError:
                 break
 
     def read_kitty_registry(self):

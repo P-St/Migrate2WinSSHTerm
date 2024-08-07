@@ -14,6 +14,7 @@ Following configuration sources are supported:
 * SecureCRT
 
 Usage:
+* Make sure that the latest [Microsoft Visual C++ Redistributable package](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version) (X64) is installed
 * Download the latest [release](https://github.com/P-St/Migrate2WinSSHTerm/releases)
 * Extract the zip file
 * To generate the connections.xml just double-click Migrate2WinSSHTerm.exe

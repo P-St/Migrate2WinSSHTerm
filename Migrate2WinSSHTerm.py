@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.19'
+__version__ = '0.20'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -23,6 +23,8 @@ class Migrate2WinSSHTerm(wx.Frame):
         hostname=None,
         port=None,
         certificate=None,
+        x11Forward=None,
+        copyFilesProtocol=None,
         proxyType=None,
         proxyHost=None,
         proxyPort=None,
@@ -30,20 +32,22 @@ class Migrate2WinSSHTerm(wx.Frame):
         proxyTelnetCommand=None      
     ):
         Node(
-        escape(name) if name is not None else None,
+        escape(name, {'"': '&quot;'}) if name is not None else None,
         parent=node,
         type="Connection",
-        username=escape(username) if username is not None else '',
-        pubkey=escape(privateKey) if privateKey is not None else '',
-        hostname=escape(hostname) if hostname is not None else '',
-        port=escape(port) if port is not None else '',
-        certificate=escape(certificate) if certificate is not None else '',
+        username=escape(username, {'"': '&quot;'}) if username is not None else '',
+        pubkey=escape(privateKey, {'"': '&quot;'}) if privateKey is not None else '',
+        hostname=escape(hostname, {'"': '&quot;'}) if hostname is not None else '',
+        port=escape(port, {'"': '&quot;'}) if port is not None else '',
+        certificate=escape(certificate, {'"': '&quot;'}) if certificate is not None else '',
+        x11Forward=escape(x11Forward, {'"': '&quot;'}) if x11Forward is not None else '',
+        copyFilesProtocol=escape(copyFilesProtocol, {'"': '&quot;'}) if copyFilesProtocol is not None else '',
         proxy="enabled" if proxyType is not None else "disabled",
-        proxyType=escape(proxyType) if proxyType is not None else '',
-        proxyHost=escape(proxyHost) if proxyHost is not None else '',
-        proxyPort=escape(proxyPort) if proxyPort is not None else '',
-        proxyUsername=escape(proxyUsername) if proxyUsername is not None else '',
-        proxyTelnetCommand=escape(proxyTelnetCommand) if proxyTelnetCommand is not None else ''
+        proxyType=escape(proxyType, {'"': '&quot;'}) if proxyType is not None else '',
+        proxyHost=escape(proxyHost, {'"': '&quot;'}) if proxyHost is not None else '',
+        proxyPort=escape(proxyPort, {'"': '&quot;'}) if proxyPort is not None else '',
+        proxyUsername=escape(proxyUsername, {'"': '&quot;'}) if proxyUsername is not None else '',
+        proxyTelnetCommand=escape(proxyTelnetCommand, {'"': '&quot;'}) if proxyTelnetCommand is not None else ''
         )
 
     def writeNode(self, node=None, xml=None):
@@ -54,21 +58,23 @@ class Migrate2WinSSHTerm(wx.Frame):
             xml.write('</Node>\n')
         if node.type == 'Connection':
             node_data = '''<Node \
-Name='%s' \
-Type='Connection' \
-Descr='' \
-Username='%s' \
-Password='' \
-PrivateKey='%s' \
-Hostname='%s' \
-Port='%s' \
-Certificate='%s' \
-pSshProxy='%s' \
-pType='%s' \
-pHost='%s' \
-pPort='%s' \
-pUser='%s' \
-pTelnetCmd='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.port, node.certificate, node.proxy, node.proxyType, node.proxyHost, node.proxyPort, node.proxyUsername, node.proxyTelnetCommand)
+Name="%s" \
+Type="Connection" \
+Descr="" \
+Username="%s" \
+Password="" \
+PrivateKey="%s" \
+Hostname="%s" \
+Port="%s" \
+Certificate="%s" \
+sX11="%s" \
+cfProt="%s" \
+pSshProxy="%s" \
+pType="%s" \
+pHost="%s" \
+pPort="%s" \
+pUser="%s" \
+pTelnetCmd="%s" />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.port, node.certificate, node.x11Forward, node.copyFilesProtocol, node.proxy, node.proxyType, node.proxyHost, node.proxyPort, node.proxyUsername, node.proxyTelnetCommand)
             xml.write(node_data)
 
     def get_con_xml_path(self):
@@ -554,22 +560,52 @@ pTelnetCmd='%s' />\n''' % (node.name, node.username, node.pubkey, node.hostname,
                     tmpProxyType = 'Local'
                 else:
                     tmpProxyType=None
-                self.saveSessionData(
-                    node=sessions_container,
-                    name=str(asubkey_name),
-                                username=str(QueryValueEx(asubkey, "UserName")[0]),
-                                privateKey=str(QueryValueEx(asubkey, "PublicKeyFile")[0]),
-                                hostname=str(QueryValueEx(asubkey, "HostName")[0]),
-                                port=str(QueryValueEx(asubkey, "PortNumber")[0]),
-                                certificate=str(QueryValueEx(asubkey, "DetachedCertificate")[0]),
-                                proxyType=tmpProxyType,
-                                proxyHost=str(QueryValueEx(asubkey, "ProxyHost")[0]),
-                                proxyPort=str(QueryValueEx(asubkey, "ProxyPort")[0]),
-                                proxyUsername=str(QueryValueEx(asubkey, "ProxyUsername")[0]),
-                                proxyTelnetCommand=str(QueryValueEx(asubkey, "ProxyTelnetCommand")[0])
-                )
+                if "tsh.exe" in str(QueryValueEx(asubkey, "ProxyTelnetCommand")[0]):
+                    self.saveSessionData(
+                        node=sessions_container,
+                        name=self.unescape_registry_key(str(asubkey_name)),
+                                    username=str(QueryValueEx(asubkey, "UserName")[0]),
+                                    privateKey=str(QueryValueEx(asubkey, "PublicKeyFile")[0]),
+                                    hostname=str(QueryValueEx(asubkey, "HostName")[0]),
+                                    port=str(QueryValueEx(asubkey, "PortNumber")[0]),
+                                    certificate=str(QueryValueEx(asubkey, "DetachedCertificate")[0]),
+                                    x11Forward="don't forward",
+                                    copyFilesProtocol="sftp",
+                                    proxyType=tmpProxyType,
+                                    proxyHost=str(QueryValueEx(asubkey, "ProxyHost")[0]),
+                                    proxyPort=str(QueryValueEx(asubkey, "ProxyPort")[0]),
+                                    proxyUsername=str(QueryValueEx(asubkey, "ProxyUsername")[0]),
+                                    proxyTelnetCommand=str(QueryValueEx(asubkey, "ProxyTelnetCommand")[0])
+                    )
+                else:
+                    self.saveSessionData(
+                        node=sessions_container,
+                        name=self.unescape_registry_key(str(asubkey_name)),
+                                    username=str(QueryValueEx(asubkey, "UserName")[0]),
+                                    privateKey=str(QueryValueEx(asubkey, "PublicKeyFile")[0]),
+                                    hostname=str(QueryValueEx(asubkey, "HostName")[0]),
+                                    port=str(QueryValueEx(asubkey, "PortNumber")[0]),
+                                    certificate=str(QueryValueEx(asubkey, "DetachedCertificate")[0]),
+                                    proxyType=tmpProxyType,
+                                    proxyHost=str(QueryValueEx(asubkey, "ProxyHost")[0]),
+                                    proxyPort=str(QueryValueEx(asubkey, "ProxyPort")[0]),
+                                    proxyUsername=str(QueryValueEx(asubkey, "ProxyUsername")[0]),
+                                    proxyTelnetCommand=str(QueryValueEx(asubkey, "ProxyTelnetCommand")[0])
+                    )
             except EnvironmentError:
                 break
+    def unescape_registry_key(self, input_str):
+        output_str = []
+        i = 0
+        while i < len(input_str):
+            if input_str[i] == '%' and i + 2 < len(input_str):
+                hex_value = int(input_str[i+1:i+3], 16)
+                output_str.append(chr(hex_value))
+                i += 3
+            else:
+                output_str.append(input_str[i])
+                i += 1
+        return ''.join(output_str)
 
     def read_kitty_registry(self):
         aReg = ConnectRegistry(None, HKEY_CURRENT_USER)

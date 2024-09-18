@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.20'
+__version__ = '0.21'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -513,7 +513,7 @@ pTelnetCmd="%s" />\n''' % (node.name, node.username, node.pubkey, node.hostname,
                 buf = StringIO(data)
                 config = configparser.RawConfigParser()
                 config.optionxform = str
-                config.readfp(buf)
+                config.read_file(buf)
                 for s in config.sections():
                     if s == 'CONNECTION':
                         for (key,val) in config.items(s):

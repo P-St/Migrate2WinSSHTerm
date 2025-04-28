@@ -5,17 +5,17 @@ Following configuration sources are supported:
 
 | Source                   | SSH | RDP | VNC |
 |--------------------------|-----|-----|-----|
-| PuTTY                    | yes | no  | no  |
-| PuTTY Session Manager    | yes | no  | no  |
-| MobaXterm                | yes | yes | yes |
-| SuperPuTTY               | yes | no  | no  |
-| mRemoteNG                | yes | yes | yes |
-| MTPuTTY                  | yes | no  | no  |
-| PuTTY Connection Manager | yes | no  | no  |
 | KiTTY                    | yes | no  | no  |
-| Xshell                   | yes | no  | no  |
-| SecureCRT                | yes | no  | no  |
+| MobaXterm                | yes | yes | yes |
+| MTPuTTY                  | yes | no  | no  |
+| mRemoteNG                | yes | yes | yes |
+| PuTTY                    | yes | no  | no  |
+| PuTTY Connection Manager | yes | no  | no  |
+| PuTTY Session Manager    | yes | no  | no  |
 | Royal TS                 | yes | yes | yes |
+| SecureCRT                | yes | no  | no  |
+| SuperPuTTY               | yes | no  | no  |
+| Xshell                   | yes | no  | no  |
 
 Usage:
 * Make sure that the latest [Microsoft Visual C++ Redistributable package](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version) (X64) is installed

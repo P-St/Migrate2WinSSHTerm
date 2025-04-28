@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.21'
+__version__ = '0.22'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -13,6 +13,7 @@ from urllib.parse import unquote
 import codecs
 import sys
 from io import StringIO
+from collections import defaultdict
 
 class Migrate2WinSSHTerm(wx.Frame):
     def saveSessionData(self,
@@ -23,6 +24,7 @@ class Migrate2WinSSHTerm(wx.Frame):
         hostname=None,
         port=None,
         certificate=None,
+        launchTool=None,
         x11Forward=None,
         copyFilesProtocol=None,
         proxyType=None,
@@ -40,6 +42,7 @@ class Migrate2WinSSHTerm(wx.Frame):
         hostname=escape(hostname, {'"': '&quot;'}) if hostname is not None else '',
         port=escape(port, {'"': '&quot;'}) if port is not None else '',
         certificate=escape(certificate, {'"': '&quot;'}) if certificate is not None else '',
+        launchTool=escape(launchTool, {'"': '&quot;'}) if launchTool is not None else '',
         x11Forward=escape(x11Forward, {'"': '&quot;'}) if x11Forward is not None else '',
         copyFilesProtocol=escape(copyFilesProtocol, {'"': '&quot;'}) if copyFilesProtocol is not None else '',
         proxy="enabled" if proxyType is not None else "disabled",
@@ -57,24 +60,28 @@ class Migrate2WinSSHTerm(wx.Frame):
                 self.writeNode(n, xml)
             xml.write('</Node>\n')
         if node.type == 'Connection':
-            node_data = '''<Node \
-Name="%s" \
-Type="Connection" \
-Descr="" \
-Username="%s" \
-Password="" \
-PrivateKey="%s" \
-Hostname="%s" \
-Port="%s" \
-Certificate="%s" \
-sX11="%s" \
-cfProt="%s" \
-pSshProxy="%s" \
-pType="%s" \
-pHost="%s" \
-pPort="%s" \
-pUser="%s" \
-pTelnetCmd="%s" />\n''' % (node.name, node.username, node.pubkey, node.hostname, node.port, node.certificate, node.x11Forward, node.copyFilesProtocol, node.proxy, node.proxyType, node.proxyHost, node.proxyPort, node.proxyUsername, node.proxyTelnetCommand)
+            node_data = (
+                f'<Node'
+                f' Name="{node.name}"'
+                f' Type="Connection"'
+                f' Descr=""'
+                f' Username="{node.username}"'
+                f' Password=""'
+                f' PrivateKey="{node.pubkey}"'
+                f' Hostname="{node.hostname}"'
+                f' Port="{node.port}"'
+                f' Certificate="{node.certificate}"'
+                f' LaunchToolInt="{node.launchTool}"'
+                f' sX11="{node.x11Forward}"'
+                f' cfProt="{node.copyFilesProtocol}"'
+                f' pSshProxy="{node.proxy}"'
+                f' pType="{node.proxyType}"'
+                f' pHost="{node.proxyHost}"'
+                f' pPort="{node.proxyPort}"'
+                f' pUser="{node.proxyUsername}"'
+                f' pTelnetCmd="{node.proxyTelnetCommand}"'
+                f' />\n'
+            )
             xml.write(node_data)
 
     def get_con_xml_path(self):
@@ -99,7 +106,7 @@ pTelnetCmd="%s" />\n''' % (node.name, node.username, node.pubkey, node.hostname,
             print("Created file '%s'" % conFile)
 
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, "Migrate2WinSSHTerm" + " " + __version__, size=(280,300), style=wx.DEFAULT_FRAME_STYLE & ~(wx.RESIZE_BORDER | wx.MAXIMIZE_BOX))
+        wx.Frame.__init__(self, None, wx.ID_ANY, "Migrate2WinSSHTerm" + " " + __version__, size=(280,325), style=wx.DEFAULT_FRAME_STYLE & ~(wx.RESIZE_BORDER | wx.MAXIMIZE_BOX))
         panel = wx.Panel(self, -1)
         self.button1 = wx.Button(panel, id=-1, label='PuTTY / PuTTY Session Manager', pos=(10, 10), size=(245, 25))
         self.button1.Bind(wx.EVT_BUTTON, self.button1Click)
@@ -121,6 +128,8 @@ pTelnetCmd="%s" />\n''' % (node.name, node.username, node.pubkey, node.hostname,
         self.button9.Bind(wx.EVT_BUTTON, self.button9Click)
         self.button10 = wx.Button(panel, id=-1, label='SecureCRT', pos=(10, 10+9*25), size=(245, 25))
         self.button10.Bind(wx.EVT_BUTTON, self.button10Click)
+        self.button11 = wx.Button(panel, id=-1, label='RoyalTS', pos=(10, 10+10*25), size=(245, 25))
+        self.button11.Bind(wx.EVT_BUTTON, self.button11Click)
         self.root = None
 
     def button1Click(self,event):
@@ -171,6 +180,11 @@ pTelnetCmd="%s" />\n''' % (node.name, node.username, node.pubkey, node.hostname,
     def button10Click(self,event):
         self.root = Node('root')
         if self.read_securecrt_xml():
+            self.create_xml()
+
+    def button11Click(self, event):
+        self.root = Node('root')
+        if self.read_royalts_xml():
             self.create_xml()
 
     def read_mtputty_xml(self):
@@ -318,10 +332,28 @@ pTelnetCmd="%s" />\n''' % (node.name, node.username, node.pubkey, node.hostname,
                     node=parentNode,
                     name=str(node.attrib.get('Name')),
                     username=str(node.attrib.get('Username')),
-                    privateKey='',
                     hostname=str(node.attrib.get('Hostname')),
                     port=str(node.attrib.get('Port'))
                     )
+            elif node.attrib.get('Protocol') == "RDP":
+                self.saveSessionData(
+                    node=parentNode,
+                    name=str(node.attrib.get('Name')),
+                    username=str(node.attrib.get('Username')),
+                    launchTool='RDP client',
+                    hostname=str(node.attrib.get('Hostname')),
+                    port=str(node.attrib.get('Port'))
+                    )
+            elif node.attrib.get('Protocol') == "VNC":
+                self.saveSessionData(
+                    node=parentNode,
+                    name=str(node.attrib.get('Name')),
+                    username=str(node.attrib.get('Username')),
+                    launchTool='VNC client',
+                    hostname=str(node.attrib.get('Hostname')),
+                    port=str(node.attrib.get('Port'))
+                    )
+
         elif node.attrib.get('Type') == 'Container':          
             pathB64 = base64.b64encode(node.attrib.get('Name').encode())
             tmp = Node(pathB64, parent=parentNode, type="Container")
@@ -451,6 +483,10 @@ pTelnetCmd="%s" />\n''' % (node.name, node.username, node.pubkey, node.hostname,
                 if s.startswith('Bookmarks'):                    
                     if config[s]['SubRep'] == 'PuTTY sessions':
                         continue
+                    if config[s]['SubRep'] == 'SCRT sessions':
+                        continue
+                    if config[s]['SubRep'] == 'SuperPuTTY sessions':
+                        continue
                     tmp = self.root
                     for (key,val) in config.items(s):
                         if key == 'ImgNum':
@@ -474,7 +510,25 @@ pTelnetCmd="%s" />\n''' % (node.name, node.username, node.pubkey, node.hostname,
                             continue
                         try:
                             sessionData = val.split('%')
-                            self.saveSessionData(tmp, key, sessionData[3], sessionData[14], sessionData[1], sessionData[2])       
+                            saveSession = False
+                            lt = ''
+                            prot = sessionData[0][sessionData[0].rfind('#') + 1:]
+                            if prot == '0':
+                                saveSession = True
+                            elif prot == '4':
+                                lt = 'RDP client'
+                                saveSession = True
+                            elif prot == '5':
+                                lt = 'VNC client'
+                                saveSession = True
+                            if saveSession:
+                                self.saveSessionData(node=tmp, 
+                                                name=key,
+                                                username=sessionData[3],
+                                                privateKey=sessionData[14],
+                                                hostname=sessionData[1],
+                                                port=sessionData[2],
+                                                launchTool=lt)  
                         except Exception as e:
                             continue            
             return True
@@ -697,7 +751,91 @@ pTelnetCmd="%s" />\n''' % (node.name, node.username, node.pubkey, node.hostname,
                 pathB64 = base64.b64encode(str(item).encode())
                 tmp = Node(pathB64, parent=parentNode, type="Container")
                 self.kitty_filesystem_helper(node + "\\" + item , tmp)
-                    
+
+    def read_royalts_xml(self):
+        style = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
+        dialog = wx.FileDialog(self, message='Open RoyalTS document (.rtsz)', wildcard='(*.rtsz)|*.rtsz', style=style)
+        if dialog.ShowModal() == wx.ID_OK:
+            file = dialog.GetPath()
+        else:
+            return False
+        dialog.Destroy()
+        try:
+            tree = ET.parse(file)
+            root = tree.getroot()
+            royal_doc = root.find("RoyalDocument")
+            if royal_doc is None:
+                raise ValueError("Invalid RoyalTS file - missing RoyalDocument element")
+            root_id = royal_doc.find("ID").text
+            id_to_node = {root_id: self.root}
+            trash_ids = set()
+            elements = []
+            position_map = defaultdict(list)
+            for elem in root:
+                if elem.tag not in ["RoyalFolder", "RoyalSSHConnection", 
+                                  "RoyalVNCConnection", "RoyalRDSConnection", 
+                                  "RoyalTrash"]:
+                    continue
+                elem_id = elem.find("ID").text
+                parent_id = elem.find("ParentID").text if elem.find("ParentID") is not None else root_id
+                position = int(elem.find("PositionNr").text) if elem.find("PositionNr") is not None else 0
+                if elem.tag == "RoyalTrash":
+                    trash_ids.add(elem_id)
+                    continue
+                elements.append({
+                    "elem": elem,
+                    "id": elem_id,
+                    "parent_id": parent_id,
+                    "position": position,
+                    "type": elem.tag
+                })
+                position_map[parent_id].append((position, elem_id))
+            for parent in position_map:
+                position_map[parent].sort(key=lambda x: x[0])
+            processed = set()
+            queue = [(root_id, self.root)]
+            while queue:
+                current_parent_id, current_parent_node = queue.pop(0)
+                for pos, elem_id in position_map.get(current_parent_id, []):
+                    element = next((e for e in elements if e["id"] == elem_id), None)
+                    if not element or element["id"] in processed:
+                        continue
+                    processed.add(element["id"])
+                    if element["type"] == "RoyalFolder":
+                        name = element["elem"].find("Name").text
+                        pathB64 = base64.b64encode(name.encode()).decode('utf-8')
+                        folder_node = Node(pathB64, parent=current_parent_node, type="Container")
+                        id_to_node[element["id"]] = folder_node
+                        queue.append((element["id"], folder_node))
+                    else:
+                        conn = element["elem"]
+                        name_elem = conn.find("Name")
+                        name = name_elem.text if name_elem is not None else "Unnamed Connection"
+                        host_elem = conn.find("URI")
+                        host = host_elem.text if host_elem is not None else ""
+                        port_elem = conn.find("Port") if conn.find("Port") is not None else conn.find("RDPPort")
+                        port = port_elem.text if port_elem is not None else (
+                            "22" if element["type"] == "RoyalSSHConnection" else
+                            "3389" if element["type"] == "RoyalRDSConnection" else 
+                            "5900"
+                        )
+                        launch_tool = {
+                            "RoyalSSHConnection": "",
+                            "RoyalRDSConnection": "RDP client",
+                            "RoyalVNCConnection": "VNC client"
+                        }[element["type"]]
+                        self.saveSessionData(
+                            node=current_parent_node,
+                            name=name,
+                            hostname=host,
+                            port=port,
+                            launchTool=launch_tool
+                        )
+            return True
+        except Exception as e:
+            wx.MessageBox(f"Error parsing RoyalTS file: {str(e)}", "Error")
+            return False
+
 if __name__ == "__main__":
     codecs.register_error("strict", codecs.ignore_errors)
     app = wx.App(False)

@@ -1,17 +1,21 @@
 # Migrate2WinSSHTerm
-This project will help you to migrate your existing remote SSH configuration to [WinSSHTerm](http://www.winsshterm.net).
+This project will help you to migrate your existing remote configuration to [WinSSHTerm](https://github.com/WinSSHTerm/WinSSHTerm).
 
 Following configuration sources are supported:
-* PuTTY
-* PuTTY Session Manager
-* MobaXterm
-* SuperPuTTY
-* mRemoteNG
-* MTPuTTY
-* PuTTY Connection Manager
-* KiTTY
-* Xshell
-* SecureCRT
+
+| Source                   | SSH | RDP | VNC |
+|--------------------------|-----|-----|-----|
+| PuTTY                    | yes | no  | no  |
+| PuTTY Session Manager    | yes | no  | no  |
+| MobaXterm                | yes | yes | yes |
+| SuperPuTTY               | yes | no  | no  |
+| mRemoteNG                | yes | yes | yes |
+| MTPuTTY                  | yes | no  | no  |
+| PuTTY Connection Manager | yes | no  | no  |
+| KiTTY                    | yes | no  | no  |
+| Xshell                   | yes | no  | no  |
+| SecureCRT                | yes | no  | no  |
+| Royal TS                 | yes | yes | yes |
 
 Usage:
 * Make sure that the latest [Microsoft Visual C++ Redistributable package](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version) (X64) is installed

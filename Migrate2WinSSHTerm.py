@@ -1,5 +1,5 @@
 __author__ = 'Alex D., P-St'
-__version__ = '0.22'
+__version__ = '0.23'
 
 import wx
 from anytree import Node, Resolver, ChildResolverError
@@ -594,7 +594,10 @@ class Migrate2WinSSHTerm(wx.Frame):
             
     def read_putty_registry(self):
         aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
-        aKey = OpenKey(aReg, r"Software\SimonTatham\PuTTY\Sessions")
+        try:
+            aKey = OpenKey(aReg, r"Software\SimonTatham\PuTTY\Sessions")
+        except FileNotFoundError:
+            aKey = OpenKey(aReg, r"Software\WOW6432Node\SimonTatham\PuTTY\Sessions")
         pathB64 = base64.b64encode("Sessions".encode())
         sessions_container = Node(pathB64, parent=self.root, type="Container")      
         for i in range(0, QueryInfoKey(aKey)[0]):
@@ -603,7 +606,7 @@ class Migrate2WinSSHTerm(wx.Frame):
                 if str(asubkey_name) == 'WinSSHTerm' or str(asubkey_name) == 'WinSSHTerm_ScriptRunner':
                     continue
                 asubkey = OpenKey(aKey, asubkey_name)
-                lclProxyMethod=str(QueryValueEx(asubkey, "ProxyMethod")[0])
+                lclProxyMethod=self.get_reg_value(asubkey, "ProxyMethod")
                 if lclProxyMethod == "1":
                     tmpProxyType = 'SOCKS4'
                 elif lclProxyMethod == "2":
@@ -614,40 +617,45 @@ class Migrate2WinSSHTerm(wx.Frame):
                     tmpProxyType = 'Local'
                 else:
                     tmpProxyType=None
-                if "tsh.exe" in str(QueryValueEx(asubkey, "ProxyTelnetCommand")[0]):
+                if "tsh.exe" in self.get_reg_value(asubkey, "ProxyTelnetCommand"):
                     self.saveSessionData(
                         node=sessions_container,
                         name=self.unescape_registry_key(str(asubkey_name)),
-                                    username=str(QueryValueEx(asubkey, "UserName")[0]),
-                                    privateKey=str(QueryValueEx(asubkey, "PublicKeyFile")[0]),
-                                    hostname=str(QueryValueEx(asubkey, "HostName")[0]),
-                                    port=str(QueryValueEx(asubkey, "PortNumber")[0]),
-                                    certificate=str(QueryValueEx(asubkey, "DetachedCertificate")[0]),
+                                    username=self.get_reg_value(asubkey, "UserName"),
+                                    privateKey=self.get_reg_value(asubkey, "PublicKeyFile"),
+                                    hostname=self.get_reg_value(asubkey, "HostName"),
+                                    port=self.get_reg_value(asubkey, "PortNumber"),
+                                    certificate=self.get_reg_value(asubkey, "DetachedCertificate"),
                                     x11Forward="don't forward",
                                     copyFilesProtocol="sftp",
                                     proxyType=tmpProxyType,
-                                    proxyHost=str(QueryValueEx(asubkey, "ProxyHost")[0]),
-                                    proxyPort=str(QueryValueEx(asubkey, "ProxyPort")[0]),
-                                    proxyUsername=str(QueryValueEx(asubkey, "ProxyUsername")[0]),
-                                    proxyTelnetCommand=str(QueryValueEx(asubkey, "ProxyTelnetCommand")[0])
+                                    proxyHost=self.get_reg_value(asubkey, "ProxyHost"),
+                                    proxyPort=self.get_reg_value(asubkey, "ProxyPort"),
+                                    proxyUsername=self.get_reg_value(asubkey, "ProxyUsername"),
+                                    proxyTelnetCommand=self.get_reg_value(asubkey, "ProxyTelnetCommand")
                     )
                 else:
                     self.saveSessionData(
                         node=sessions_container,
                         name=self.unescape_registry_key(str(asubkey_name)),
-                                    username=str(QueryValueEx(asubkey, "UserName")[0]),
-                                    privateKey=str(QueryValueEx(asubkey, "PublicKeyFile")[0]),
-                                    hostname=str(QueryValueEx(asubkey, "HostName")[0]),
-                                    port=str(QueryValueEx(asubkey, "PortNumber")[0]),
-                                    certificate=str(QueryValueEx(asubkey, "DetachedCertificate")[0]),
+                                    username=self.get_reg_value(asubkey, "UserName"),
+                                    privateKey=self.get_reg_value(asubkey, "PublicKeyFile"),
+                                    hostname=self.get_reg_value(asubkey, "HostName"),
+                                    port=self.get_reg_value(asubkey, "PortNumber"),
+                                    certificate=self.get_reg_value(asubkey, "DetachedCertificate"),
                                     proxyType=tmpProxyType,
-                                    proxyHost=str(QueryValueEx(asubkey, "ProxyHost")[0]),
-                                    proxyPort=str(QueryValueEx(asubkey, "ProxyPort")[0]),
-                                    proxyUsername=str(QueryValueEx(asubkey, "ProxyUsername")[0]),
-                                    proxyTelnetCommand=str(QueryValueEx(asubkey, "ProxyTelnetCommand")[0])
+                                    proxyHost=self.get_reg_value(asubkey, "ProxyHost"),
+                                    proxyPort=self.get_reg_value(asubkey, "ProxyPort"),
+                                    proxyUsername=self.get_reg_value(asubkey, "ProxyUsername"),
+                                    proxyTelnetCommand=self.get_reg_value(asubkey, "ProxyTelnetCommand")
                     )
             except EnvironmentError:
                 break
+    def get_reg_value(self, key, name, default=""):
+        try:
+            return str(QueryValueEx(key, name)[0])
+        except FileNotFoundError:
+            return ""
     def unescape_registry_key(self, input_str):
         output_str = []
         i = 0
